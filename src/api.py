@@ -1,33 +1,28 @@
 import requests
+from flask import redirect
 
 def api(url):
-    response = requests.get(url)
+    try:
+        response = requests.get(url)
+    except:
+        return redirect('/')
 
     return response.json()
 
-def weather(lat, lon, days):
+def weather(lat, lon):
     lat, lon = lat, lon
-    url = "https://api.openweathermap.org/data/2.5/onecall?lat={}&lon={}&exclude=hourly,minutely&lang=es&appid=81a2eda3859b3d2d3993e10076a2f55b".format(lat, lon)
+    url = "https://api.openweathermap.org/data/2.5/onecall?lat={}&lon={}&exclude=hourly,minutely&lang=es&appid=22c3c6556377ef7aa668297808e841ae".format(lat, lon)
 
     weather = api(url)
     rains = []
     waterRain = 0
-
-    for day in weather['daily']:
-        if 'rain' in day:
-            waterRain += int(day['rain'])
-            rains.append(day['rain'])
-
-    # i = 0
-    # while i < days:
-    #     response = api(url)
-
-    #     for daily in response['daily']:
-    #         if 'rain' in daily:
-    #             waterRain += int(daily['rain'])
-    #             rains.append(daily['rain'])
-        
-    #     i += 1
+    try:
+        for day in weather['daily']:
+            if 'rain' in day:
+                waterRain += int(day['rain'])
+                rains.append(day['rain'])
+    except:
+        return redirect('/')
 
     return waterRain
 
@@ -39,7 +34,7 @@ def provincias():
 
 def latLong(place):
     query = place.replace(" ", "%20")
-    url = "http://api.positionstack.com/v1/forward?access_key=903afabb8803c4faf82c58296f2ba4f3&query={}".format(query)
+    url = "http://api.positionstack.com/v1/forward?access_key=cdae9836cb283b23d1416bb0af7fb7db&query={}".format(query)
 
     response = api(url)
 

@@ -7,9 +7,6 @@
   <body>
     <h1>Bienvenido</h1>
     <form action="/water-place" method="post">
-
-      <h1>Sign Up</h1>
-      
       <label for="job">Lugar</label> 
       <div class="select">
         <select name="place" id="slct">
@@ -39,28 +36,6 @@
         <input type="number" placeholder="metros cuadrados" name="distancePh" id="distancePh" disabled style="width: 45%;">
       </div>
 
-      <label for="marco">Marco de siembra</label>
-      <div style="display: flex; justify-content: space-between;">
-        <input type="number" name="marco" id="marco" style="width: 65%;">
-        <div class="select" style="width: 30%;">
-          <select name="unit" id="slct">
-            <option selected value='cm'>cm</option>
-            <option value='m'>m</option>
-          </select>
-        </div>
-      </div>
-
-      <label for="distance">Distancia entre camas</label>
-      <div style="display: flex; justify-content: space-between;">
-        <input type="number" name="distance" id="distance" style="width: 65%;">
-        <div class="select" style="width: 30%;">
-          <select name="unit" id="slct">
-            <option selected value='cm'>cm</option>
-            <option value='m'>m</option>
-          </select>
-        </div>
-      </div>
-
       <label for="riego">Tipo de riego</label> 
       <div class="select">
         <select name="riego" id="slct">
@@ -69,7 +44,7 @@
         </select>
       </div>
       
-      <button type="submit">Sign Up</button>
+      <button type="submit">Calcular</button>
     
     </form>
     

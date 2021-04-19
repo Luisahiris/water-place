@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, url_for, redirect, g
 from src import api as apiResponses
 from DB import database as db
 from datetime import date
@@ -7,11 +7,59 @@ from src import helpers
 app = Flask(__name__)
 
 user = helpers.createUser(1, 'lu', 123456)
+
+users = []
+users.append(user)
+
+app.secret_key = 'DAS211564a1sdjoNJU_djUYTF5245'
+
+# @app.before_request
+# def before_request():
+#   if 'user_id' in session:
+#     try:
+#       user = [x for x in users if x.id == id][0]
+#       g.user = user
+#     except:
+#       return
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+  if request.method == 'POST':
+    session.pop('user_id', None)
+
+    username = request.form['username']
+    password = request.form['password']
+
+    user = [x for x in users if x.username == username][0]
+    if user and user.password == password:
+      session['user_id'] = user.id
+      return redirect(url_for('/'))
+    
+    return redirect(url_for('login'))
+
+  return render_template('logIn.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+  if request.method == 'POST':
+    session.pop('user_id', None)
+
+    username = request.form['username']
+    password = request.form['password']
+
+    user = helpers.createUser(len(users), username, password)
+    users.append(user)
+    session['user_id'] = user.id
+    return redirect(url_for('message'))
+    
+    # return redirect(url_for('signup'))
+
+  return render_template('signUp.html')
  
 @app.route('/')  
 def message(): 
   apiProvincias = apiResponses.provincias()
-  cul = db.cultivos
+  cul = db.crops.keys()
   return render_template('index.html', cultivos=cul, provincias=apiProvincias)
 
 @app.route('/water-place', methods=['POST'])
@@ -22,51 +70,37 @@ def waterPlace():
   apiEto = apiResponses.et_reference(lat, lon)
   et_reference = apiEto['evapotranspiration']
 
-  cropping = request.form['cropping'].lower()
-  # cropKCs = db.crops[cropping]['kc']
+  cropping = request.form['cropping']
 
   dateForm = request.form['dateCroppin']
   year, month, day = dateForm.split('-')
   year, month, day = int(year), int(month), int(day)
   dateCrop = date(year, month, day)
   today = date.today()
-  diffDays = today - dateCrop
-  diffDays = str(diffDays).split(' ')[0]
+  diffDays = 0
+  if today != dateCrop:
+    diffDays = today - dateCrop
+    diffDays = str(diffDays).split(' ')[0]
+    diffDays = int(diffDays)
 
   area = request.form['area']
   irrigationType = request.form['riego']
 
-  periods = {
-    'init': { 'etc': 0, 'rain': 0, 'missing': 0, 'litters': 0, 'completed': False },
-    'dev': { 'etc': 0, 'rain': 0, 'missing': 0, 'litters': 0, 'completed': False },
-    'mid': { 'etc': 0, 'rain': 0, 'missing': 0, 'litters': 0, 'completed': False },
-    'end': { 'etc': 0, 'rain': 0, 'missing': 0, 'litters': 0, 'completed': False },
-  }
+  user.setUp(dateForm, cropping, int(area), [lat, lon], diffDays, irrigationType)
 
-  user.setUp(dateForm, cropping, area, [lat, lon], periods)
+  cropData = db.crops[cropping]
+  rainResponse = apiResponses.weather(lat, lon)
+  user.calculateNext7Days(cropData, et_reference, rainResponse)
 
-  for key in periods.keys():
-    periodKc = db.crops[cropping]['kc'][key]
-    periodDays = db.crops[cropping]['days'][key]
+  user.littersQuantity()
 
-    periodEtc = periodKc * et_reference * periodDays
-    
+  time = helpers.convert(user.time * 3600)
+  time = time.split(':')
+  time = f'{time[0]} horas y {time[1]} minutos'
+  
+  helpers.saveUserData(user)
 
-    periods[key]['etc'] = periodEtc
-
-    rainResponse = apiResponses.weather(lat, lon, periodDays)
-
-    periods[key]['rain'] += rainResponse
-
-    periods[key]['missing'] = periodEtc - rainResponse
-
-    if periods[key]['missing'] >= 0:
-       periods[key]['litters'] = helpers.littersQuantity(periods[key]['missing'], int(area), irrigationType)
-    else:
-      periods = helpers.leftOverRain(key, periods)
-
-
-  return render_template('results.html', lugar=place, cultivo=cropping, lat=lat, lon=lon, date=diffDays, periods=str(periods), area=area)
+  return render_template('results.html', cultivo=cropping, time=time, period=user.period)
 
 if __name__ == '__main__':
   app.run(debug = True) 

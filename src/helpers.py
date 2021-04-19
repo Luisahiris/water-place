@@ -1,100 +1,108 @@
+import datetime
+
 class User():
   def __init__(self, id, username, password):
     self.id = id
     self.username = username
     self.password = password
 
-  def setUp(self, dateStarted, cropping, area, location, periods, days):
+  def setUp(self, dateStarted, cropping, area, location, days, irrigationType):
     self.dateStarted = dateStarted
     self.cropping = cropping
+    self.irrigationType = irrigationType
     self.area = area
     self.location = location
-    self.periods = periods
-    self.daysCount = days
+    self.period = 'Inicial'
+    self.daysCount = 0
     self.littersApplied = 0
+    self.currentEtc = 0
+    self.currentRain = 0
+    self.missing = 0
+    self.status = 'inProgress'
+    self.litters = 0
+    self.time = 0
 
-  def history(self, daysCount, littersApplied):
-    self.daysCount = daysCount
-    self.littersApplied = littersApplied
-
-  def update(self, key, nextKey, etc, rain):
-    self.periods[key]['etc'] = etc
-    self.periods[key]['rain'] += rain
-    self.periods[key]['missing'] = etc - rain
-
-    if etc - rain < 0:
-      self.periods[nextKey]['rain'] -= etc - rain
+  def update(self, etc, rain):
+    self.currentEtc = etc
+    self.currentRain = rain
+    self.missing += etc - rain
 
   def calculateNext7Days(self, cropData, et0, rainResponse):
-    periodsIncompleted = self.incompletedPeriods()
-    self.daysCount += 7
+    daysCount = self.daysCount + 7
+    if daysCount > cropData['days']['total']:
+      currentEtc = cropData['kc']['end'] * et0 * (cropData['days']['total'] - self.daysCount)
 
-    if (cropData['days'][periodsIncompleted[0]] - self.daysCount) >= 7:
+      self.update(currentEtc, rainResponse)
+      self.status = 'Completed'
+      return
 
-      periodEtc = cropData['kc'][periodsIncompleted[0]] * et0 * 7
+    for key in cropData['days']:
+      if key != 'total' and cropData['days'][key] > self.daysCount:
+        self.daysCount += 7
+        subs = cropData['days'][key] - self.daysCount
 
-      self.update(periodsIncompleted[0], periodsIncompleted[1], periodEtc, rainResponse)
+        if subs < 0:
+          currentEtc = cropData['kc'][key] * et0 * (subs + 7)
+          nextEtc = cropData['kc'][key] * et0 * (subs * -1)
 
-      if (cropData['days'][periodsIncompleted[0]] - self.daysCount) == 7:
-        self.periods[periodsIncompleted[0]]['completed'] = True
-    else:
-      current = cropData['days'][periodsIncompleted[0]] - self.daysCount
-      nextDays = 7 - current
-      
-      self.periods[periodsIncompleted[0]]['completed'] = True
+          self.update(currentEtc + nextEtc, rainResponse)
+          self.period = nextPeriod(key)
 
-      periodEtcC = cropData['kc'][periodsIncompleted[0]] * et0 * current
-      periodEtcN = cropData['kc'][periodsIncompleted[1]] * et0 * nextDays
+        else:
+          currentEtc = cropData['kc'][key] * et0 * 7
+          self.update(currentEtc, rainResponse)
 
+        return
+  
+  def littersQuantity(self):
+    litters = self.missing * self.area
+    addition = 0
+    
+    if self.irrigationType == 'Aspersión':
+      addition = 0.30
+    elif self.irrigationType == 'Microaspersión':
+      addition = 0.15
+    
+    litters = litters + (litters * addition)
 
+    self.litters = litters
+    self.littersApplied += litters
+    self.missing = 0
 
-  def incompletedPeriods(self):
-    periods = []
-    for e in self.periods:
-      if not e['completed']:
-        periods.append(e)
+    self.littersPerMinute()
 
-    return periods
+  def littersPerMinute(self):
+    irrigation = self.area / 36
+    littersCapacity = irrigation * 1000
+
+    results = self.litters / littersCapacity
+    
+    self.time = results
 
 def createUser(id, username, password):
   newUser = User(id, username, password)
 
   return newUser
 
-def littersQuantity(missing, area, irrigationType):
-  litters = missing * area
-  addition = 0
-  
-  if irrigationType == 'Aspersión':
-    addition = 0.30
-  elif irrigationType == 'Microaspersión':
-    addition = 0.15
-  
-  litters = litters + (litters * addition)
+def nextPeriod(key):
+  periods = [
+    'Inicial',
+    'Desarrollo',
+    'Medio',
+    'Final'
+  ]
 
-  return litters
+  index = periods.index(key)
 
-def irrigationCapacity(area):
-  irrigation = area / 36
-  littersCapacity = irrigation * 1000
+  return periods[index + 1]
 
-  return littersCapacity
+def convert(n):
+    return str(datetime.timedelta(seconds = n))
 
-def littersPerMinute(irrigationQuantity, needs):
-  results = 1
+def saveUserData(user):
+  data = ['\n'+str(user.username)+'-', str(user.password)+'-', str(user.period)+'-', str(user.littersApplied)+'-', str(user.daysCount)]
+  file = open('users.txt', 'a')
 
-  if irrigationQuantity > needs:
-    results = irrigationQuantity % needs
-  elif irrigationQuantity < needs:
-    results = needs % irrigationQuantity
-  
-  return results
+  file.writelines(data)
 
-def leftOverRain(key, obj):
-  before = ''
-  for e in obj.keys():
-    if before == key:
-      obj[e]['rain'] -= obj[key]['missing']
-      return obj
-    before = e
-  return obj
+  file.close()

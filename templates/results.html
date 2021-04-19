@@ -3,12 +3,19 @@
   <head>
     <title>Water-Place Results</title>
   </head>
-  <body>
-    <h1>{{ lugar }}</h1>
-    <h1>{{ cultivo }}</h1>
-    <h1>{{ date }}</h1>
-    <h1>{{ periods }}</h1>
-    <h1>{{ area }}</h1>
-    <h1>{{ lat }}, {{ lon }}</h1>
+  <body class="results">
+    <div class="rCard">
+      <h1>Resultados Semanal</h1>
+      <div>
+        <h3>Cultivo: {{ cultivo }}</h3>
+        <p>Etapa Actual: {{ period }}</p>
+        <p>Tiempo de riego: {{ time }}</p>
+        {% if status == 'completed' %}
+          <h4>¡Gracias por confiar en nosotros!<br /> Esperamos verte en tu próximo cultivo</h4>
+        {% else %}
+          <h4>Te esperamos la próxima semana para tus siguientes resultados semanal</h4>
+        {% endif %}
+      </div>
+    </div>
   </body>
 </html>
