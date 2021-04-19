@@ -1,3 +1,5 @@
+![logo](https://user-images.githubusercontent.com/58194309/115302742-c1642500-a130-11eb-94f3-a8fda857c52e.png)
+
 # Water Place
 Water Place es un programa codificado en Python que busca disminuir el impacto de la agricultura en los recursos hídricos disponibles en el planeta.
 
